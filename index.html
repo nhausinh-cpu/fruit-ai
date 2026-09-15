@@ -1,1228 +1,631 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Fruit AI</title>
-
-    <!-- TensorFlow -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-
-    <!-- Teachable Machine -->
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
-
-    <style>
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            min-height: 100vh;
-
-            font-family:
-                Arial,
-                Helvetica,
-                sans-serif;
-
-            background:
-                linear-gradient(
-                    135deg,
-                    #e8f5e9,
-                    #fff8e1
-                );
-
-            display: flex;
-            justify-content: center;
-            align-items: center;
-
-            padding: 20px;
-        }
-
-
-        /* APP */
-
-        .app {
-            width: 100%;
-            max-width: 850px;
-
-            background: white;
-
-            border-radius: 28px;
-
-            padding: 30px;
-
-            box-shadow:
-                0 15px 45px
-                rgba(0,0,0,0.15);
-
-            text-align: center;
-        }
-
-
-        /* TITLE */
-
-        h1 {
-            margin: 0;
-
-            font-size: 42px;
-
-            color: #2e7d32;
-        }
-
-        .subtitle {
-            margin-top: 8px;
-
-            color: #777;
-
-            font-size: 17px;
-        }
-
-
-        /* BUTTONS */
-
-        .buttons {
-            display: flex;
-
-            justify-content: center;
-
-            gap: 15px;
-
-            flex-wrap: wrap;
-
-            margin-top: 30px;
-            margin-bottom: 20px;
-        }
-
-
-        button,
-        .upload-label {
-
-            border: none;
-
-            border-radius: 15px;
-
-            padding:
-                16px 25px;
-
-            font-size: 17px;
-
-            font-weight: bold;
-
-            cursor: pointer;
-
-            transition: 0.2s;
-        }
-
-
-        .camera-btn {
-
-            background: #43a047;
-
-            color: white;
-        }
-
-
-        .upload-label {
-
-            background: #fb8c00;
-
-            color: white;
-
-            display: inline-block;
-        }
-
-
-        button:hover,
-        .upload-label:hover {
-
-            transform:
-                translateY(-2px);
-
-            opacity: 0.9;
-        }
-
-
-        #fileInput {
-
-            display: none;
-        }
-
-
-        /* STATUS */
-
-        #status {
-
-            min-height: 25px;
-
-            margin: 10px;
-
-            color: #666;
-
-            font-weight: bold;
-        }
-
-
-        /* DISPLAY */
-
-        .display {
-
-            width: 100%;
-
-            min-height: 360px;
-
-            background: #f3f3f3;
-
-            border-radius: 20px;
-
-            display: flex;
-
-            align-items: center;
-
-            justify-content: center;
-
-            overflow: hidden;
-
-            padding: 15px;
-        }
-
-
-        .placeholder {
-
-            color: #aaa;
-
-            font-size: 19px;
-
-            padding: 30px;
-        }
-
-
-        #preview {
-
-            display: none;
-
-            max-width: 100%;
-
-            max-height: 420px;
-
-            object-fit: contain;
-
-            border-radius: 18px;
-        }
-
-
-        #webcam-container {
-
-            display: flex;
-
-            justify-content: center;
-
-            align-items: center;
-
-            width: 100%;
-        }
-
-
-        #webcam-container video {
-
-            width: 100%;
-
-            max-width: 500px;
-
-            border-radius: 18px;
-        }
-
-
-        #webcam-container canvas {
-
-            width: 100%;
-
-            max-width: 500px;
-
-            border-radius: 18px;
-        }
-
-
-        /* RESULT */
-
-        .result {
-
-            margin-top: 25px;
-
-            padding: 20px;
-
-            background: #f8f9fa;
-
-            border-radius: 20px;
-        }
-
-
-        .result-title {
-
-            color: #555;
-
-            font-size: 15px;
-
-            font-weight: bold;
-        }
-
-
-        #resultEmoji {
-
-            font-size: 60px;
-
-            margin: 10px;
-        }
-
-
-        #resultName {
-
-            font-size: 30px;
-
-            font-weight: bold;
-
-            color: #2e7d32;
-        }
-
-
-        #resultPercent {
-
-            margin-top: 5px;
-
-            font-size: 20px;
-
-            color: #777;
-        }
-
-
-        /* PREDICTIONS */
-
-        .predictions {
-
-            margin-top: 20px;
-
-            text-align: left;
-        }
-
-
-        .prediction {
-
-            margin: 12px 0;
-        }
-
-
-        .prediction-name {
-
-            display: flex;
-
-            justify-content:
-                space-between;
-
-            margin-bottom: 5px;
-
-            font-size: 14px;
-        }
-
-
-        .bar {
-
-            height: 10px;
-
-            background: #ddd;
-
-            border-radius: 10px;
-
-            overflow: hidden;
-        }
-
-
-        .bar-fill {
-
-            height: 100%;
-
-            width: 0%;
-
-            background: #66bb6a;
-
-            border-radius: 10px;
-
-            transition:
-                width 0.4s ease;
-        }
-
-
-        /* MOBILE */
-
-        @media (max-width: 600px) {
-
-            body {
-
-                padding: 10px;
-
-                align-items:
-                    flex-start;
-            }
-
-
-            .app {
-
-                margin-top: 10px;
-
-                padding: 20px;
-
-                border-radius: 22px;
-            }
-
-
-            h1 {
-
-                font-size: 34px;
-            }
-
-
-            .subtitle {
-
-                font-size: 15px;
-            }
-
-
-            button,
-            .upload-label {
-
-                width: 100%;
-
-                font-size: 16px;
-            }
-
-
-            .display {
-
-                min-height: 280px;
-            }
-
-
-            #resultName {
-
-                font-size: 25px;
-            }
-        }
-
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fruit AI</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #fff8e1, #e8f5e9);
+  text-align: center;
+  color: #222;
+}
+
+.container {
+  max-width: 650px;
+  margin: auto;
+  padding: 25px 15px;
+}
+
+h1 {
+  margin-bottom: 5px;
+  color: #2e7d32;
+}
+
+.subtitle {
+  margin-top: 0;
+  color: #666;
+}
+
+button {
+  width: 100%;
+  max-width: 420px;
+  padding: 16px;
+  margin: 8px auto;
+  border: none;
+  border-radius: 14px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  background: #4caf50;
+  color: white;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+#cameraArea {
+  display: none;
+  margin-top: 15px;
+}
+
+#cameraContainer {
+  width: 100%;
+  max-width: 500px;
+  margin: auto;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #000;
+}
+
+#cameraContainer canvas,
+#cameraContainer video {
+  width: 100% !important;
+  height: auto !important;
+  display: block;
+}
+
+#captureBtn {
+  background: #e53935;
+  display: none;
+}
+
+#retakeBtn {
+  background: #ff9800;
+  display: none;
+}
+
+#uploadArea {
+  display: none;
+  margin-top: 15px;
+}
+
+#preview {
+  max-width: 100%;
+  max-height: 500px;
+  border-radius: 18px;
+  display: none;
+  margin: 15px auto;
+}
+
+#result {
+  margin-top: 20px;
+  display: none;
+  background: white;
+  padding: 20px;
+  border-radius: 18px;
+  box-shadow: 0 5px 20px rgba(0,0,0,.1);
+}
+
+.resultName {
+  font-size: 30px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.resultPercent {
+  font-size: 24px;
+  color: #2e7d32;
+  font-weight: bold;
+}
+
+.bar {
+  height: 14px;
+  background: #eee;
+  border-radius: 20px;
+  margin: 8px 0 15px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background: #4caf50;
+  border-radius: 20px;
+  width: 0%;
+  transition: width .4s;
+}
+
+.fileLabel {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  margin: 8px auto;
+  padding: 16px;
+  background: #2196f3;
+  color: white;
+  border-radius: 14px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+input[type="file"] {
+  display: none;
+}
+
+.status {
+  margin: 15px;
+  color: #666;
+}
+</style>
 </head>
-
 
 <body>
 
+<div class="container">
 
-<div class="app">
+  <h1>🍎 Fruit AI</h1>
+  <p class="subtitle">Nhận diện trái cây bằng trí tuệ nhân tạo</p>
 
+  <!-- 2 CHỨC NĂNG CHÍNH -->
+  <button onclick="startCamera()">
+    📷 Nhận diện bằng Camera
+  </button>
 
-    <h1>🍎 Fruit AI</h1>
+  <label class="fileLabel">
+    🖼️ Tải ảnh lên
+    <input type="file" id="fileInput" accept="image/*" onchange="handleImage(event)">
+  </label>
 
+  <!-- CAMERA -->
+  <div id="cameraArea">
 
-    <div class="subtitle">
-        Nhận diện trái cây bằng trí tuệ nhân tạo
-    </div>
+    <div id="cameraContainer"></div>
 
+    <button id="captureBtn" onclick="capturePhoto()">
+      📸 CHỤP ẢNH
+    </button>
 
-    <!-- BUTTONS -->
+    <button id="retakeBtn" onclick="retakePhoto()">
+      🔄 CHỤP LẠI
+    </button>
 
-    <div class="buttons">
+  </div>
 
+  <!-- ẢNH UPLOAD -->
+  <img id="preview">
 
-        <button
-            class="camera-btn"
-            onclick="startCamera()"
-        >
-            📷 Nhận diện bằng Camera
-        </button>
+  <div class="status" id="status">
+    Đang tải AI...
+  </div>
 
+  <!-- KẾT QUẢ -->
+  <div id="result">
 
-        <label class="upload-label">
+    <div class="resultName" id="resultName"></div>
 
-            🖼️ Tải ảnh lên
+    <div class="resultPercent" id="resultPercent"></div>
 
-            <input
-                id="fileInput"
-                type="file"
-                accept="image/*"
-                onchange="handleImage(event)"
-            >
+    <div id="bars"></div>
 
-        </label>
-
-
-    </div>
-
-
-    <!-- STATUS -->
-
-    <div id="status">
-        ⏳ Đang tải AI...
-    </div>
-
-
-    <!-- IMAGE / CAMERA -->
-
-    <div class="display">
-
-
-        <div
-            id="placeholder"
-            class="placeholder"
-        >
-            📷 Camera hoặc 🖼️ ảnh sẽ xuất hiện ở đây
-        </div>
-
-
-        <div id="webcam-container"></div>
-
-
-        <img
-            id="preview"
-            alt="Ảnh trái cây"
-        >
-
-
-    </div>
-
-
-    <!-- RESULT -->
-
-    <div class="result">
-
-
-        <div class="result-title">
-            🔍 KẾT QUẢ NHẬN DIỆN
-        </div>
-
-
-        <div id="resultEmoji">
-            🍎
-        </div>
-
-
-        <div id="resultName">
-            Chưa nhận diện
-        </div>
-
-
-        <div id="resultPercent">
-            --
-        </div>
-
-
-        <div
-            id="predictions"
-            class="predictions"
-        ></div>
-
-
-    </div>
-
+  </div>
 
 </div>
 
-
-
 <script>
 
+const URL = "https://teachablemachine.withgoogle.com/models/6csAwjG54/";
 
-/* =====================================
-   MODEL
-===================================== */
-
-
-const MODEL_URL =
-    "https://teachablemachine.withgoogle.com/models/6csAwjG54/";
-
-
-let model = null;
-
-let webcam = null;
-
-let maxPredictions = 0;
-
+let model;
+let webcam;
+let maxPredictions;
 let cameraRunning = false;
+let captured = false;
 
+const emoji = {
+  "Chuối": "🍌",
+  "Xoài": "🥭",
+  "Thanh long": "🐉",
+  "Cà chua": "🍅"
+};
 
-/* =====================================
-   LOAD MODEL
-===================================== */
-
+// ==========================
+// TẢI MODEL
+// ==========================
 
 async function loadModel() {
 
-    if (model) {
+  try {
 
-        return true;
+    document.getElementById("status").innerText =
+      "⏳ Đang tải AI...";
 
-    }
+    const modelURL = URL + "model.json";
+    const metadataURL = URL + "metadata.json";
 
+    model = await tmImage.load(modelURL, metadataURL);
 
-    try {
+    maxPredictions = model.getTotalClasses();
 
-        document.getElementById("status")
-            .innerHTML =
-            "⏳ Đang tải AI...";
+    document.getElementById("status").innerText =
+      "✅ AI đã sẵn sàng!";
 
+  } catch (error) {
 
-        const modelURL =
-            MODEL_URL + "model.json";
+    console.error(error);
 
+    document.getElementById("status").innerText =
+      "❌ Không tải được AI. Hãy kiểm tra mạng.";
 
-        const metadataURL =
-            MODEL_URL + "metadata.json";
-
-
-        model =
-            await tmImage.load(
-                modelURL,
-                metadataURL
-            );
-
-
-        maxPredictions =
-            model.getTotalClasses();
-
-
-        document.getElementById("status")
-            .innerHTML =
-            "✅ AI đã sẵn sàng!";
-
-
-        return true;
-
-    }
-
-    catch (error) {
-
-        console.error(
-            "MODEL ERROR:",
-            error
-        );
-
-
-        document.getElementById("status")
-            .innerHTML =
-            "❌ Không tải được AI.";
-
-
-        return false;
-
-    }
+  }
 
 }
 
 
-/* =====================================
-   CAMERA
-===================================== */
-
+// ==========================
+// MỞ CAMERA SAU
+// ==========================
 
 async function startCamera() {
 
-    try {
+  if (!model) {
+    alert("AI đang tải, đợi một chút rồi thử lại nhé!");
+    return;
+  }
 
+  document.getElementById("cameraArea").style.display = "block";
 
-        const loaded =
-            await loadModel();
+  document.getElementById("preview").style.display = "none";
 
+  document.getElementById("result").style.display = "none";
 
-        if (!loaded) {
+  document.getElementById("captureBtn").style.display = "block";
 
-            return;
+  document.getElementById("retakeBtn").style.display = "none";
 
-        }
+  captured = false;
 
+  try {
 
-        /* Stop old camera */
+    // CAMERA SAU
+    webcam = new tmImage.Webcam(500, 500, false);
 
-        if (webcam) {
+    await webcam.setup({
+      facingMode: {
+        exact: "environment"
+      },
+      width: {
+        ideal: 1280
+      },
+      height: {
+        ideal: 1280
+      }
+    });
 
-            try {
+    await webcam.play();
 
-                webcam.stop();
-
-            }
-
-            catch(e) {}
-
-            webcam = null;
-
-        }
-
-
-        cameraRunning = false;
-
-
-        /* Clear display */
-
-        document.getElementById(
-            "webcam-container"
-        ).innerHTML = "";
-
-
-        document.getElementById(
-            "preview"
-        ).style.display = "none";
-
-
-        document.getElementById(
-            "placeholder"
-        ).style.display = "none";
-
-
-        /*
-            false = KHÔNG lật camera.
-
-            Camera sau sẽ hiển thị
-            đúng chiều.
-        */
-
-        webcam =
-            new tmImage.Webcam(
-                500,
-                500,
-                false
-            );
-
-
-        /*
-            environment =
-            CAMERA SAU
-        */
-
-        await webcam.setup({
-
-            facingMode: {
-                ideal: "environment"
-            },
-
-            width: {
-                ideal: 1280
-            },
-
-            height: {
-                ideal: 1280
-            }
-
-        });
-
-
-        await webcam.play();
-
-
-        cameraRunning = true;
-
-
-        document.getElementById(
-            "webcam-container"
-        ).appendChild(
-            webcam.canvas
-        );
-
-
-        document.getElementById(
-            "status"
-        ).innerHTML =
-        "📷 Camera sau đang nhận diện...";
-
-
-        window.requestAnimationFrame(
-            cameraLoop
-        );
-
-
-    }
-
-    catch (error) {
-
-        console.error(
-            "CAMERA ERROR:",
-            error
-        );
-
-
-        document.getElementById(
-            "status"
-        ).innerHTML =
-        "❌ Không mở được camera sau. Hãy cho phép Camera.";
-
-    }
-
-}
-
-
-/* =====================================
-   CAMERA LOOP
-===================================== */
-
-
-async function cameraLoop() {
-
-    if (
-        !webcam ||
-        !cameraRunning
-    ) {
-
-        return;
-
-    }
-
-
-    try {
-
-        webcam.update();
-
-
-        await predict(
-            webcam.canvas,
-            false
-        );
-
-
-    }
-
-    catch(error) {
-
-        console.error(
-            error
-        );
-
-    }
-
-
-    if (cameraRunning) {
-
-        window.requestAnimationFrame(
-            cameraLoop
-        );
-
-    }
-
-}
-
-
-/* =====================================
-   UPLOAD IMAGE
-===================================== */
-
-
-async function handleImage(event) {
-
-
-    const file =
-        event.target.files &&
-        event.target.files[0];
-
-
-    if (!file) {
-
-        return;
-
-    }
-
-
-    try {
-
-
-        /*
-            Stop camera
-        */
-
-        cameraRunning = false;
-
-
-        if (webcam) {
-
-            try {
-
-                webcam.stop();
-
-            }
-
-            catch(e) {}
-
-            webcam = null;
-
-        }
-
-
-        document.getElementById(
-            "webcam-container"
-        ).innerHTML = "";
-
-
-        document.getElementById(
-            "placeholder"
-        ).style.display = "none";
-
-
-        /*
-            Load AI
-        */
-
-        const loaded =
-            await loadModel();
-
-
-        if (!loaded) {
-
-            return;
-
-        }
-
-
-        document.getElementById(
-            "status"
-        ).innerHTML =
-        "🔎 Đang phân tích ảnh...";
-
-
-        /*
-            Create image
-        */
-
-        const image =
-            document.getElementById(
-                "preview"
-            );
-
-
-        /*
-            IMPORTANT:
-            Use FileReader instead of
-            object URL for better
-            phone compatibility.
-        */
-
-        const reader =
-            new FileReader();
-
-
-        reader.onload =
-            function(e) {
-
-
-                image.onload =
-                    async function() {
-
-                        try {
-
-
-                            image.style.display =
-                                "block";
-
-
-                            /*
-                                Predict directly
-                                from HTMLImageElement
-                            */
-
-                            await predict(
-                                image,
-                                false
-                            );
-
-
-                            document.getElementById(
-                                "status"
-                            ).innerHTML =
-                            "✅ Đã nhận diện ảnh!";
-
-
-                        }
-
-                        catch(error) {
-
-                            console.error(
-                                "IMAGE PREDICT ERROR:",
-                                error
-                            );
-
-
-                            document.getElementById(
-                                "status"
-                            ).innerHTML =
-                            "❌ Không thể nhận diện ảnh.";
-
-                        }
-
-                    };
-
-
-                image.src =
-                    e.target.result;
-
-            };
-
-
-        reader.onerror =
-            function() {
-
-                document.getElementById(
-                    "status"
-                ).innerHTML =
-                "❌ Không đọc được ảnh.";
-
-            };
-
-
-        reader.readAsDataURL(file);
-
-
-    }
-
-    catch(error) {
-
-        console.error(
-            "UPLOAD ERROR:",
-            error
-        );
-
-
-        document.getElementById(
-            "status"
-        ).innerHTML =
-        "❌ Không thể nhận diện ảnh.";
-
-    }
-
-}
-
-
-/* =====================================
-   PREDICTION
-===================================== */
-
-
-async function predict(
-    input,
-    flipped = false
-) {
-
-
-    if (!model) {
-
-        return;
-
-    }
-
-
-    /*
-        Teachable Machine supports:
-        Image / Canvas / Video
-    */
-
-    const prediction =
-        await model.predict(
-            input,
-            flipped
-        );
-
-
-    if (
-        !prediction ||
-        prediction.length === 0
-    ) {
-
-        return;
-
-    }
-
-
-    /* Find highest prediction */
-
-    let best =
-        prediction[0];
-
-
-    for (
-        let i = 1;
-        i < prediction.length;
-        i++
-    ) {
-
-        if (
-            prediction[i].probability >
-            best.probability
-        ) {
-
-            best =
-                prediction[i];
-
-        }
-
-    }
-
-
-    const percent =
-        best.probability * 100;
-
-
-    /* =================================
-       EMOJI
-    ================================= */
-
-
-    const className =
-        best.className
-            .toLowerCase()
-            .trim();
-
-
-    let emoji = "🍎";
-
-
-    if (
-        className.includes("chuối") ||
-        className.includes("chuoi")
-    ) {
-
-        emoji = "🍌";
-
-    }
-
-
-    else if (
-        className.includes("xoài") ||
-        className.includes("xoai")
-    ) {
-
-        emoji = "🥭";
-
-    }
-
-
-    else if (
-        className.includes("thanh long")
-    ) {
-
-        emoji = "🐉";
-
-    }
-
-
-    else if (
-        className.includes("cà chua") ||
-        className.includes("ca chua")
-    ) {
-
-        emoji = "🍅";
-
-    }
-
-
-    /* =================================
-       SHOW RESULT
-    ================================= */
-
-
-    document.getElementById(
-        "resultEmoji"
-    ).innerHTML =
-        emoji;
-
-
-    document.getElementById(
-        "resultName"
-    ).innerHTML =
-        best.className;
-
-
-    document.getElementById(
-        "resultPercent"
-    ).innerHTML =
-        percent.toFixed(1) + "%";
-
-
-    /* =================================
-       SHOW ALL PREDICTIONS
-    ================================= */
-
+    cameraRunning = true;
 
     const container =
-        document.getElementById(
-            "predictions"
-        );
-
+      document.getElementById("cameraContainer");
 
     container.innerHTML = "";
 
+    container.appendChild(webcam.canvas);
 
-    for (
-        let i = 0;
-        i < prediction.length;
-        i++
-    ) {
+    document.getElementById("status").innerText =
+      "📷 Camera sau đã mở — đưa trái cây vào khung rồi bấm CHỤP ẢNH.";
 
+    cameraLoop();
 
-        const p =
-            prediction[i];
+  } catch (error) {
 
+    console.error(error);
 
-        const pPercent =
-            p.probability * 100;
+    // Nếu exact environment không được,
+    // thử lại camera sau theo cách nhẹ hơn
 
+    try {
 
-        const row =
-            document.createElement(
-                "div"
-            );
+      webcam = new tmImage.Webcam(500, 500, false);
 
+      await webcam.setup({
+        facingMode: {
+          ideal: "environment"
+        }
+      });
 
-        row.className =
-            "prediction";
+      await webcam.play();
 
+      cameraRunning = true;
 
-        row.innerHTML = `
+      const container =
+        document.getElementById("cameraContainer");
 
-            <div class="prediction-name">
+      container.innerHTML = "";
 
-                <span>
-                    ${p.className}
-                </span>
+      container.appendChild(webcam.canvas);
 
-                <span>
-                    ${pPercent.toFixed(1)}%
-                </span>
+      document.getElementById("status").innerText =
+        "📷 Camera đã mở — đưa trái cây vào khung rồi bấm CHỤP ẢNH.";
 
-            </div>
+      cameraLoop();
 
-            <div class="bar">
+    } catch (error2) {
 
-                <div
-                    class="bar-fill"
-                    style="width:${pPercent}%"
-                ></div>
+      console.error(error2);
 
-            </div>
-
-        `;
-
-
-        container.appendChild(
-            row
-        );
+      alert(
+        "Không mở được camera. Hãy cho phép trình duyệt sử dụng camera nhé!"
+      );
 
     }
+
+  }
 
 }
 
 
-/* =====================================
-   START
-===================================== */
+// ==========================
+// CHỈ HIỂN THỊ CAMERA
+// KHÔNG NHẬN DIỆN LIÊN TỤC
+// ==========================
 
+function cameraLoop() {
+
+  if (!cameraRunning || captured) return;
+
+  webcam.update();
+
+  requestAnimationFrame(cameraLoop);
+
+}
+
+
+// ==========================
+// CHỤP ẢNH
+// ==========================
+
+async function capturePhoto() {
+
+  if (!webcam || captured) return;
+
+  captured = true;
+
+  cameraRunning = false;
+
+  // Lưu đúng frame hiện tại
+  const canvas = document.createElement("canvas");
+
+  canvas.width = webcam.canvas.width;
+  canvas.height = webcam.canvas.height;
+
+  const ctx = canvas.getContext("2d");
+
+  ctx.drawImage(
+    webcam.canvas,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  // Hiển thị ảnh đã chụp
+  const container =
+    document.getElementById("cameraContainer");
+
+  container.innerHTML = "";
+
+  container.appendChild(canvas);
+
+  document.getElementById("captureBtn").style.display = "none";
+
+  document.getElementById("retakeBtn").style.display = "block";
+
+  document.getElementById("status").innerText =
+    "⏳ Đang nhận diện ảnh vừa chụp...";
+
+  // CHỈ NHẬN DIỆN 1 LẦN
+  await predict(canvas);
+
+}
+
+
+// ==========================
+// CHỤP LẠI
+// ==========================
+
+async function retakePhoto() {
+
+  if (webcam) {
+
+    try {
+      webcam.stop();
+    } catch (e) {}
+
+  }
+
+  document.getElementById("cameraContainer").innerHTML = "";
+
+  document.getElementById("result").style.display = "none";
+
+  document.getElementById("retakeBtn").style.display = "none";
+
+  document.getElementById("captureBtn").style.display = "block";
+
+  captured = false;
+
+  cameraRunning = false;
+
+  // Mở lại camera
+  await startCamera();
+
+}
+
+
+// ==========================
+// TẢI ẢNH
+// ==========================
+
+function handleImage(event) {
+
+  const file = event.target.files[0];
+
+  if (!file) return;
+
+  if (!model) {
+
+    alert("AI đang tải, đợi một chút nhé!");
+
+    return;
+
+  }
+
+  // Tắt camera nếu đang mở
+  if (webcam) {
+
+    try {
+      webcam.stop();
+    } catch (e) {}
+
+  }
+
+  cameraRunning = false;
+  captured = false;
+
+  document.getElementById("cameraArea").style.display = "none";
+
+  document.getElementById("result").style.display = "none";
+
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+
+    const img = new Image();
+
+    img.onload = async function() {
+
+      const preview =
+        document.getElementById("preview");
+
+      preview.src = e.target.result;
+
+      preview.style.display = "block";
+
+      document.getElementById("status").innerText =
+        "⏳ Đang nhận diện ảnh...";
+
+      await predict(img);
+
+    };
+
+    img.src = e.target.result;
+
+  };
+
+  reader.readAsDataURL(file);
+
+}
+
+
+// ==========================
+// NHẬN DIỆN
+// ==========================
+
+async function predict(input) {
+
+  try {
+
+    const prediction =
+      await model.predict(input, false);
+
+    let bestIndex = 0;
+
+    for (let i = 1; i < prediction.length; i++) {
+
+      if (
+        prediction[i].probability >
+        prediction[bestIndex].probability
+      ) {
+
+        bestIndex = i;
+
+      }
+
+    }
+
+    const best =
+      prediction[bestIndex];
+
+    const name =
+      best.className;
+
+    const percent =
+      (best.probability * 100).toFixed(1);
+
+    document.getElementById("resultName").innerText =
+      (emoji[name] || "🍎") + " " + name;
+
+    document.getElementById("resultPercent").innerText =
+      percent + "%";
+
+    // Thanh tỷ lệ
+    const bars =
+      document.getElementById("bars");
+
+    bars.innerHTML = "";
+
+    prediction.forEach(p => {
+
+      const percentValue =
+        (p.probability * 100).toFixed(1);
+
+      const row =
+        document.createElement("div");
+
+      row.innerHTML = `
+        <div style="text-align:left;font-weight:bold;">
+          ${emoji[p.className] || "🍎"} ${p.className}
+          — ${percentValue}%
+        </div>
+
+        <div class="bar">
+          <div class="barFill"
+               style="width:${percentValue}%">
+          </div>
+        </div>
+      `;
+
+      bars.appendChild(row);
+
+    });
+
+    document.getElementById("result").style.display =
+      "block";
+
+    document.getElementById("status").innerText =
+      "✅ Đã chốt kết quả!";
+
+  } catch (error) {
+
+    console.error(error);
+
+    document.getElementById("status").innerText =
+      "❌ Không thể nhận diện ảnh.";
+
+  }
+
+}
+
+
+// ==========================
+// CHẠY
+// ==========================
 
 loadModel();
 
-
 </script>
-
 
 </body>
 </html>
