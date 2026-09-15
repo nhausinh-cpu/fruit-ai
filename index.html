@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fruit AI</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #e8f5e9, #fff8e1);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .app {
+            width: 90%;
+            max-width: 800px;
+            background: white;
+            border-radius: 25px;
+            padding: 30px;
+            box-shadow: 0 10px 35px rgba(0,0,0,0.15);
+            text-align: center;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 42px;
+            color: #2e7d32;
+        }
+
+        .subtitle {
+            margin-top: 8px;
+            color: #777;
+            font-size: 17px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 30px 0 20px;
+            flex-wrap: wrap;
+        }
+
+        button,
+        .upload-label {
+            border: none;
+            border-radius: 14px;
+            padding: 15px 25px;
+            font-size: 17px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .camera-btn {
+            background: #43a047;
+            color: white;
+        }
+
+        .upload-label {
+            background: #fb8c00;
+            color: white;
+            display: inline-block;
+        }
+
+        button:hover,
+        .upload-label:hover {
+            transform: translateY(-2px);
+            opacity: 0.9;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        #status {
+            min-height: 25px;
+            margin: 10px;
+            font-weight: bold;
+            color: #666;
+        }
+
+        .display {
+            width: 100%;
+            min-height: 350px;
+            background: #f3f3f3;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+
+        #preview {
+            max-width: 100%;
+            max-height: 400px;
+            display: none;
+            border-radius: 18px;
+        }
+
+        #webcam-container canvas {
+            max-width: 100%;
+            border-radius: 18px;
+        }
+
+        .placeholder {
+            color: #aaa;
+            font-size: 20px;
+        }
+
+        .result {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 18px;
+        }
+
+        .result-title {
+            color: #555;
+            font-size: 15px;
+            font-weight: bold;
+        }
+
+        #resultEmoji {
+            font-size: 60px;
+            margin: 10px;
+        }
+
+        #resultName {
+            font-size: 30px;
+            font-weight: bold;
+            color: #2e7d32;
+        }
+
+        #resultPercent {
+            font-size: 20px;
+            color: #777;
+            margin-top: 5px;
+        }
+
+        .predictions {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .prediction {
+            margin: 10px 0;
+        }
+
+        .prediction-name {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .bar {
+            height: 10px;
+            background: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            width: 0%;
+            background: #66bb6a;
+            border-radius: 10px;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="app">
+
+    <h1>🍎 Fruit AI</h1>
+
+    <div class="subtitle">
+        Nhận diện trái cây bằng trí tuệ nhân tạo
+    </div>
+
+    <div class="buttons">
+
+        <button class="camera-btn" onclick="startCamera()">
+            📷 Nhận diện bằng Camera
+        </button>
+
+        <label class="upload-label">
+            🖼️ Tải ảnh lên
+            <input
+                id="fileInput"
+                type="file"
+                accept="image/*"
+                onchange="handleImage(event)"
+            >
+        </label>
+
+    </div>
+
+    <div id="status">
+        ⏳ Đang chuẩn bị AI...
+    </div>
+
+    <div class="display">
+
+        <div id="placeholder" class="placeholder">
+            📷 Camera hoặc 🖼️ ảnh sẽ xuất hiện ở đây
+        </div>
+
+        <div id="webcam-container"></div>
+
+        <img id="preview">
+
+    </div>
+
+    <div class="result">
+
+        <div class="result-title">
+            🔍 KẾT QUẢ NHẬN DIỆN
+        </div>
+
+        <div id="resultEmoji">
+            🍎
+        </div>
+
+        <div id="resultName">
+            Chưa nhận diện
+        </div>
+
+        <div id="resultPercent">
+            --
+        </div>
+
+        <div id="predictions" class="predictions"></div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+    // ==============================
+    // MODEL TEACHABLE MACHINE
+    // ==============================
+
+    const URL =
+        "https://teachablemachine.withgoogle.com/models/6csAwjG54/";
+
+    let model;
+    let webcam;
+    let maxPredictions;
+
+
+    // ==============================
+    // TẢI MODEL
+    // ==============================
+
+    async function loadModel() {
+
+        try {
+
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            model = await tmImage.load(
+                modelURL,
+                metadataURL
+            );
+
+            maxPredictions =
+                model.getTotalClasses();
+
+            document.getElementById("status").innerHTML =
+                "✅ AI đã sẵn sàng!";
+
+        }
+
+        catch (error) {
+
+            console.error(error);
+
+            document.getElementById("status").innerHTML =
+                "❌ Không thể tải model AI.";
+
+        }
+
+    }
+
+
+    // ==============================
+    // CAMERA
+    // ==============================
+
+    async function startCamera() {
+
+        try {
+
+            if (!model) {
+
+                document.getElementById("status").innerHTML =
+                    "⏳ Đang tải AI...";
+
+                await loadModel();
+
+            }
+
+            if (webcam) {
+
+                webcam.stop();
+
+            }
+
+            document.getElementById("placeholder").style.display =
+                "none";
+
+            document.getElementById("preview").style.display =
+                "none";
+
+            document.getElementById("webcam-container").innerHTML =
+                "";
+
+            webcam = new tmImage.Webcam(
+                500,
+                400,
+                true
+            );
+
+            await webcam.setup();
+
+            await webcam.play();
+
+            document
+                .getElementById("webcam-container")
+                .appendChild(webcam.canvas);
+
+            document.getElementById("status").innerHTML =
+                "📷 Đang nhận diện...";
+
+            window.requestAnimationFrame(cameraLoop);
+
+        }
+
+        catch (error) {
+
+            console.error(error);
+
+            document.getElementById("status").innerHTML =
+                "❌ Không thể mở Camera. Hãy cho phép trình duyệt sử dụng Camera.";
+
+        }
+
+    }
+
+
+    async function cameraLoop() {
+
+        if (!webcam) return;
+
+        webcam.update();
+
+        await predict(webcam.canvas);
+
+        window.requestAnimationFrame(cameraLoop);
+
+    }
+
+
+    // ==============================
+    // TẢI ẢNH
+    // ==============================
+
+    async function handleImage(event) {
+
+        const file = event.target.files[0];
+
+        if (!file) return;
+
+        try {
+
+            if (!model) {
+
+                document.getElementById("status").innerHTML =
+                    "⏳ Đang tải AI...";
+
+                await loadModel();
+
+            }
+
+            if (webcam) {
+
+                webcam.stop();
+
+                webcam = null;
+
+            }
+
+            document.getElementById("webcam-container").innerHTML =
+                "";
+
+            document.getElementById("placeholder").style.display =
+                "none";
+
+            const image = document.getElementById("preview");
+
+            image.src = URL.createObjectURL(file);
+
+            image.style.display = "block";
+
+            document.getElementById("status").innerHTML =
+                "🔎 Đang phân tích ảnh...";
+
+            image.onload = async function () {
+
+                await predict(image);
+
+                document.getElementById("status").innerHTML =
+                    "✅ Đã nhận diện xong!";
+
+            };
+
+        }
+
+        catch (error) {
+
+            console.error(error);
+
+            document.getElementById("status").innerHTML =
+                "❌ Không thể nhận diện ảnh.";
+
+        }
+
+    }
+
+
+    // ==============================
+    // NHẬN DIỆN
+    // ==============================
+
+    async function predict(input) {
+
+        if (!model) return;
+
+        const prediction =
+            await model.predict(input);
+
+        let bestPrediction =
+            prediction[0];
+
+        for (let i = 1; i < prediction.length; i++) {
+
+            if (
+                prediction[i].probability >
+                bestPrediction.probability
+            ) {
+
+                bestPrediction =
+                    prediction[i];
+
+            }
+
+        }
+
+        const percent =
+            (bestPrediction.probability * 100).toFixed(1);
+
+
+        // ==============================
+        // ICON
+        // ==============================
+
+        let emoji = "🍎";
+
+        const name =
+            bestPrediction.className.toLowerCase();
+
+        if (name.includes("chuối") ||
+            name.includes("chuoi")) {
+
+            emoji = "🍌";
+
+        }
+
+        else if (name.includes("xoài") ||
+                 name.includes("xoai")) {
+
+            emoji = "🥭";
+
+        }
+
+        else if (name.includes("thanh long")) {
+
+            emoji = "🐉";
+
+        }
+
+        else if (name.includes("cà chua") ||
+                 name.includes("ca chua")) {
+
+            emoji = "🍅";
+
+        }
+
+
+        // ==============================
+        // KẾT QUẢ CHÍNH
+        // ==============================
+
+        document.getElementById("resultEmoji")
+            .innerHTML = emoji;
+
+        document.getElementById("resultName")
+            .innerHTML = bestPrediction.className;
+
+        document.getElementById("resultPercent")
+            .innerHTML = percent + "%";
+
+
+        // ==============================
+        // THANH PHẦN TRĂM
+        // ==============================
+
+        const predictions =
+            document.getElementById("predictions");
+
+        predictions.innerHTML = "";
+
+
+        for (let i = 0; i < prediction.length; i++) {
+
+            const percent =
+                prediction[i].probability * 100;
+
+            const row =
+                document.createElement("div");
+
+            row.className =
+                "prediction";
+
+            row.innerHTML = `
+
+                <div class="prediction-name">
+
+                    <span>
+                        ${prediction[i].className}
+                    </span>
+
+                    <span>
+                        ${percent.toFixed(1)}%
+                    </span>
+
+                </div>
+
+                <div class="bar">
+
+                    <div
+                        class="bar-fill"
+                        style="width:${percent}%"
+                    ></div>
+
+                </div>
+
+            `;
+
+            predictions.appendChild(row);
+
+        }
+
+    }
+
+
+    // ==============================
+    // KHỞI ĐỘNG MODEL
+    // ==============================
+
+    loadModel();
+
+</script>
+
+</body>
+</html>
